@@ -43,7 +43,10 @@
       "Bash(git init *)",
       "Bash(git config *)",
       "Bash(gh repo *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(rm -f \"C:\\\\Users\\\\Fqdsooner\\\\.claude\\\\.hook_debug.log\")"
     ]
   }
 }
