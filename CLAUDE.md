@@ -410,11 +410,11 @@ from pathlib import Path
 
 STATUS_FILE = Path.home() / '.claude' / '.floating_ball_status.json'
 STATUS_MAP = {
-    'PreToolUse':       'waiting',
-    'PostToolUse':      'running',
-    'Stop':             'completed',
-    'UserPromptSubmit': 'running',
-    'SessionEnd':       'exit',
+    'PermissionRequest': 'waiting',
+    'PostToolUse':       'running',
+    'Stop':              'completed',
+    'UserPromptSubmit':  'running',
+    'SessionEnd':        'exit',
 }
 
 def main():
@@ -444,9 +444,8 @@ if __name__ == '__main__':
 ```json
 {
   "hooks": {
-    "PreToolUse": [
+    "PermissionRequest": [
       {
-        "matcher": "",
         "hooks": [
           {
             "type": "command",
