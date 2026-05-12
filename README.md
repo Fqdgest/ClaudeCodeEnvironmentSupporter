@@ -7,7 +7,6 @@
 ```bash
 # 1. 克隆仓库
 git clone https://github.com/Fqdgest/ClaudeCodeEnvironmentSupporter.git
-cd ClaudeCodeEnvironmentSupporter
 
 # 2. 填写个人信息
 cp personal_info_TEMPLATE.md personal_info.md
