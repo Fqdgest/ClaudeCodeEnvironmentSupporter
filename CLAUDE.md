@@ -4,13 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 本工作区的用途
 
-这是一个 **Claude Code 全局环境配置器**。当你在新电脑上安装好 Claude Code 后，将此工作区作为起始目录打开，Claude Code 读取本文档后将按照以下步骤逐项配置全局环境，使新电脑具备与本机相同的开发能力。
+这是一个 **Claude Code 全局环境配置器**。当你在新电脑上安装好 Claude Code 后，将此工作区作为起始目录打开，Claude Code 读取本文档后将按照以下步骤逐项配置全局环境，使新电脑具备完整的开发能力。
 
-**前置条件**：新电脑已安装 Claude Code CLI 并已完成 API 认证（`claude login` 或手动配置 API key）。
+**前置条件**：新电脑已安装 Claude Code CLI、Python（`py` 启动器）、Git、Node.js。
 
 ### ⚠️ 给新电脑上 Claude Code 实例的行动指令
 
 **收到此文档后，不要只是阅读——请按顺序执行每个步骤中的命令，逐一完成全局环境配置。** 每完成一步，运行该步骤提供的验证命令确认配置生效。如遇到下载/安装类操作需要用户手动确认，提示用户操作后继续下一步。
+
+---
+
+## 第0步：读取个人信息配置
+
+本工作区根目录下有一个 `personal_info.md` 文件（由 `personal_info_TEMPLATE.md` 复制而来），包含本机用户的个人信息。
+
+**立即执行**：读取 `personal_info.md`，提取其中所有 `KEY: value` 格式的字段值。这些值将在后续所有步骤中使用：
+
+| 字段 | 用途 | 必填 |
+|------|------|------|
+| `WINDOWS_USERNAME` | 构造绝对路径（Hook 命令等） | ✅ |
+| `MATLAB_INSTALL_DIR` | MATLAB MCP 注册路径 | 可选 |
+| `GIT_INSTALL_DIR` | Git 工具链路径（pdftotext 等） | 可选 |
+| `API_BASE_URL` | 第三方 API 地址 | 可选 |
+| `API_KEY` | API 密钥 | 可选 |
+| `DEFAULT_MODEL` | 默认模型名称 | 可选 |
+| `PROXY_HOST` / `PROXY_PORT` | HTTP 代理设置 | 可选 |
+| `EXTRA_DISKS` | 需授予 Read 权限的盘符 | 可选 |
+
+> **安全提示**：`personal_info.md` 已被 `.gitignore` 忽略，不会被提交到 GitHub。请勿将其内容写入任何其他文件。
 
 ---
 
@@ -31,7 +52,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 执行方式：用 `claude config set` 逐项设置，或直接用 Edit 工具写入 `~/.claude/settings.json`。
 
-### 1.1 常用全局权限
+### 1.1 API 提供商配置（条件执行）
+
+检查 `personal_info.md` 中的 `API_KEY` 字段：
+
+- **如果 `API_KEY` 为空或未填写**：跳过本节。用户已通过 `claude login` 使用官方 Anthropic API。
+- **如果 `API_KEY` 有值**：将以下 env 字段合并到 `~/.claude/settings.json` 的 `"env"` 块中：
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "{{API_BASE_URL}}",
+    "ANTHROPIC_AUTH_TOKEN": "{{API_KEY}}",
+    "ANTHROPIC_MODEL": "{{DEFAULT_MODEL}}",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "{{DEFAULT_MODEL}}",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "{{DEFAULT_MODEL}}",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "{{DEFAULT_MODEL}}"
+  }
+}
+```
+
+将 `{{API_BASE_URL}}`、`{{API_KEY}}`、`{{DEFAULT_MODEL}}` 替换为 `personal_info.md` 中的实际值。
+
+> 如果使用代理，还需在 `"env"` 中添加 `HTTP_PROXY` 和 `HTTPS_PROXY`（格式 `http://{{PROXY_HOST}}:{{PROXY_PORT}}`）。仅当 `PROXY_HOST` 非空时添加。
+
+### 1.2 常用全局权限
 
 以下权限配置写入 `~/.claude/settings.local.json`，允许 Claude Code 在执行日常操作时减少重复的权限弹窗：
 
@@ -63,7 +108,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 }
 ```
 
-> 如果新电脑的 C/D 盘上有项目文件需要 Claude Code 访问，可额外添加 `Read(//c/**)` 和 `Read(//d/**)`。根据实际需求调整。
+**额外磁盘权限**：检查 `personal_info.md` 中的 `EXTRA_DISKS`。如果非空，对该字段中列出的每个盘符，在权限列表中添加 `"Read(//<盘符>/**)"` 条目。例如 `EXTRA_DISKS: c,d` 则添加：
+
+```json
+"Read(//c/**)",
+"Read(//d/**)"
+```
+
+> 如果你还有项目文件在其他盘符上，也一并添加对应的 Read 权限。
 
 ---
 
@@ -156,6 +208,8 @@ py -m pip install pypdf pdfplumber PyMuPDF pypdfium2 pdf2image pytesseract pytho
 | `reportlab` | 编程创建 PDF |
 | `pandas` / `openpyxl` | 数据处理和 Excel 导出 |
 
+> 如果配置了代理（`PROXY_HOST` 非空），pip 命令需加 `--proxy http://{{PROXY_HOST}}:{{PROXY_PORT}}`。
+
 ### 3.2 Node.js
 
 从 [nodejs.org](https://nodejs.org) 安装 LTS 版本（当前参考：v18+）。安装后自带 npm 和 npx。
@@ -236,27 +290,29 @@ gswin64c --version
 
 ## 第4步：MATLAB MCP Server
 
-如果需要在 Claude Code 中运行 MATLAB 代码，配置 MATLAB MCP Server：
+如果需要在 Claude Code 中运行 MATLAB 代码，配置 MATLAB MCP Server。
 
 ### 4.1 前提
+
+检查 `personal_info.md` 中 `MATLAB_INSTALL_DIR` 是否已填写。如果为空，跳过整个第4步。
 
 本机需安装 MATLAB R2024b 或更高版本，MCP server 可执行文件位于 MATLAB 安装目录的 `bin/` 下。
 
 ### 4.2 全局注册 MCP Server
 
 ```bash
-claude mcp add matlab -- "D:\MATLAB\bin\matlab-mcp-core-server-win64.exe" --matlab-display-mode=desktop
+claude mcp add matlab -- "{{MATLAB_INSTALL_DIR}}\bin\matlab-mcp-core-server-win64.exe" --matlab-display-mode=desktop
 ```
 
-路径中的 `D:\MATLAB\` 应替换为新电脑上的 MATLAB 安装目录。
+将 `{{MATLAB_INSTALL_DIR}}` 替换为 `personal_info.md` 中的实际路径。
 
 ### 4.3 首次配置
 
 ```bash
-"D:\MATLAB\bin\matlab-mcp-core-server-win64.exe" --setup-matlab
+"{{MATLAB_INSTALL_DIR}}\bin\matlab-mcp-core-server-win64.exe" --setup-matlab
 ```
 
-如果 Matthews 无法连接，在 MATLAB 命令窗口中运行：
+如果 MATLAB 无法连接，在 MATLAB 命令窗口中运行：
 ```matlab
 enableservice('CommunicationService', true);
 enableservice('AutomationServer', true);
@@ -264,7 +320,7 @@ enableservice('AutomationServer', true);
 
 ### 4.4 授予权限
 
-在 `~/.claude/settings.local.json` 中添加 MCP 相关权限：
+在 `~/.claude/settings.local.json` 中添加 MCP 相关权限。从 `MATLAB_INSTALL_DIR` 提取盘符（如 `D:` → `d`），然后添加：
 
 ```json
 {
@@ -275,15 +331,15 @@ enableservice('AutomationServer', true);
       "mcp__matlab__check_matlab_code",
       "Bash(matlab *)",
       "Bash(where matlab *)",
-      "Read(//d/MATLAB/**)",
-      "Read(//d/MATLAB/bin/**)",
-      "Read(//d/MATLAB/bin/win64/**)"
+      "Read(//{{MATLAB_DRIVE}}/MATLAB/**)",
+      "Read(//{{MATLAB_DRIVE}}/MATLAB/bin/**)",
+      "Read(//{{MATLAB_DRIVE}}/MATLAB/bin/win64/**)"
     ]
   }
 }
 ```
 
-路径中的盘符 `d` 按实际 MATLAB 安装位置调整。
+将 `{{MATLAB_DRIVE}}` 替换为 MATLAB 安装盘符（小写）。
 
 ---
 
@@ -359,19 +415,32 @@ claude mcp add context7 --scope user -- npx @upstash/context7-mcp
 
 ## 第7步：状态栏配置（Token 用量显示）
 
-配置 Claude Code 状态栏，实时显示模型上下文使用百分比、具体数值、模型名称和缓存命中率：
+配置 Claude Code 状态栏，实时显示模型上下文使用百分比、具体数值、模型名称、缓存命中率和 Effort 级别。
+
+### 7.1 复制状态栏脚本
+
+将工作区中的 `statusline-command.py` 复制到 `~/.claude/` 目录：
 
 ```bash
-/statusline
+cp statusline-command.py ~/.claude/
 ```
 
-使用交互式配置界面，添加以下组件：
-- **模型上下文使用百分比**：显示当前上下文窗口的填充比例
-- **具体 Token 数值**：显示已用/总 token 数
-- **模型名称**：显示当前使用的模型 ID
-- **缓存命中率**：显示 prompt caching 的命中情况
+### 7.2 注册状态栏
 
-> 也可直接调用 `statusline-setup` agent 来完成此配置。
+使用 `personal_info.md` 中的 `WINDOWS_USERNAME` 构造命令路径，将以下配置写入 `~/.claude/settings.json`：
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "py C:/Users/{{WINDOWS_USERNAME}}/.claude/statusline-command.py"
+  }
+}
+```
+
+将 `{{WINDOWS_USERNAME}}` 替换为实际值。**路径必须使用绝对路径**（Windows 不支持 `~` 展开）。
+
+> 也可通过 `/statusline` 交互式界面手动配置。
 
 ---
 
@@ -395,51 +464,16 @@ cp launch_floating_ball.bat ~/.claude/
 cp launch_floating_ball.vbs ~/.claude/
 ```
 
-### 8.2 创建 Hook 脚本
-
-创建 `~/.claude/hooks/update_floating_ball.py`：
+### 8.2 复制 Hook 脚本
 
 ```bash
 mkdir -p ~/.claude/hooks
-```
-
-```python
-"""Claude Code hook — updates floating ball status file."""
-import json, sys, time
-from pathlib import Path
-
-STATUS_FILE = Path.home() / '.claude' / '.floating_ball_status.json'
-STATUS_MAP = {
-    'PermissionRequest': 'waiting',
-    'PostToolUse':       'running',
-    'Stop':              'completed',
-    'UserPromptSubmit':  'running',
-    'SessionEnd':        'exit',
-}
-
-def main():
-    try:
-        event = json.loads(sys.stdin.read() or '{}')
-    except Exception:
-        return
-    event_type = event.get('hook_event_name', '')
-    status = STATUS_MAP.get(event_type)
-    if status:
-        try:
-            STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
-            STATUS_FILE.write_text(json.dumps({
-                'status': status, 'timestamp': time.time(),
-            }))
-        except Exception:
-            pass
-
-if __name__ == '__main__':
-    main()
+cp hooks/update_floating_ball.py ~/.claude/hooks/
 ```
 
 ### 8.3 注册 Hooks
 
-在 `~/.claude/settings.json` 中添加以下 `hooks` 块（与已有字段合并）：
+使用 `personal_info.md` 中的 `WINDOWS_USERNAME` 构造命令路径（Windows 不支持 `~` 展开，必须用绝对路径）。将以下 JSON 合并到 `~/.claude/settings.json` 中：
 
 ```json
 {
@@ -449,7 +483,7 @@ if __name__ == '__main__':
         "hooks": [
           {
             "type": "command",
-            "command": "py C:/Users/<你的用户名>/.claude/hooks/update_floating_ball.py",
+            "command": "py C:/Users/{{WINDOWS_USERNAME}}/.claude/hooks/update_floating_ball.py",
             "timeout": 10
           }
         ]
@@ -461,7 +495,7 @@ if __name__ == '__main__':
         "hooks": [
           {
             "type": "command",
-            "command": "py C:/Users/<你的用户名>/.claude/hooks/update_floating_ball.py",
+            "command": "py C:/Users/{{WINDOWS_USERNAME}}/.claude/hooks/update_floating_ball.py",
             "timeout": 10
           }
         ]
@@ -472,7 +506,7 @@ if __name__ == '__main__':
         "hooks": [
           {
             "type": "command",
-            "command": "py C:/Users/<你的用户名>/.claude/hooks/update_floating_ball.py",
+            "command": "py C:/Users/{{WINDOWS_USERNAME}}/.claude/hooks/update_floating_ball.py",
             "timeout": 10
           }
         ]
@@ -483,7 +517,7 @@ if __name__ == '__main__':
         "hooks": [
           {
             "type": "command",
-            "command": "py C:/Users/<你的用户名>/.claude/hooks/update_floating_ball.py",
+            "command": "py C:/Users/{{WINDOWS_USERNAME}}/.claude/hooks/update_floating_ball.py",
             "timeout": 10
           }
         ]
@@ -494,7 +528,7 @@ if __name__ == '__main__':
         "hooks": [
           {
             "type": "command",
-            "command": "py C:/Users/<你的用户名>/.claude/hooks/update_floating_ball.py",
+            "command": "py C:/Users/{{WINDOWS_USERNAME}}/.claude/hooks/update_floating_ball.py",
             "timeout": 10
           }
         ]
@@ -504,7 +538,7 @@ if __name__ == '__main__':
 }
 ```
 
-> 将 `<你的用户名>` 替换为实际的 Windows 用户名。路径必须使用绝对路径（Windows 不支持 `~` 展开）。
+**关键**：将 `{{WINDOWS_USERNAME}}` 替换为 `personal_info.md` 中的实际值后再写入。
 
 ### 8.4 启动悬浮球
 
@@ -541,11 +575,11 @@ pyw ~/.claude/floating_ball.py
 | Node.js | `node --version && npm --version` |
 | Git | `git --version` |
 | Superpowers 插件 | `/plugin list` 应显示 superpowers |
-| MATLAB MCP | `claude mcp list` 应显示 matlab |
+| MATLAB MCP | `claude mcp list` 应显示 matlab（如已配置） |
 | PDF Reader MCP | `claude mcp list` 应显示 pdf-reader |
 | Context7 MCP | `claude mcp list` 应显示 context7 |
 | 全局 skills | `ls ~/.claude/skills/` 应显示 pdf 和 find-skills |
-| 状态栏 | 观察 Claude Code 界面底部状态栏是否显示 token 用量、模型名称、缓存命中率 |
+| 状态栏 | 观察 Claude Code 界面底部状态栏是否显示 token 用量、模型名称、缓存命中率、Effort |
 | 悬浮球 | 双击 `~/.claude/launch_floating_ball.vbs`，确认悬浮球出现；发送消息后确认颜色随状态变化 |
 
 ---
